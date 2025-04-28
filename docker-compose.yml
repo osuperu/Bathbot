@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   psql:
     container_name: bathbot-db
@@ -20,8 +18,9 @@ services:
     container_name: bathbot-redis
     image: redis:alpine
     restart: unless-stopped
+    command: --port 6380
     ports:
-      - 9736:6379
+      - 9737:6380
     volumes:
       - ./docker-volume/redis:/data
     networks:
