@@ -17,7 +17,7 @@ use tokio::time::sleep;
 
 use super::{PpManager, pp::Mods};
 use crate::{
-    core::Context,
+    core::{Context, BotConfig},
     util::query::{FilterCriteria, RegularCriteria, Searchable},
 };
 
@@ -336,7 +336,9 @@ impl MapManager {
         }
 
         for (duration, i) in backoff.take(ATTEMPTS).zip(2..) {
-            let bytes_fut = Context::client().get_map_file(map_id);
+            let config = BotConfig::get();
+            
+            let bytes_fut = Context::client().get_map_file(config.server_url.as_ref(), map_id);
 
             let reason = match bytes_fut.await {
                 Ok(bytes) if !bytes.is_empty() => match Beatmap::from_bytes(&bytes) {

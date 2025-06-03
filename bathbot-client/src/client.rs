@@ -2,6 +2,7 @@ use std::time::Instant;
 
 use bytes::Bytes;
 use eyre::{Result, WrapErr};
+use http::StatusCode;
 use http_body_util::{BodyExt, Collected, Full};
 use hyper::{
     Method, Request, Response,
@@ -98,6 +99,63 @@ impl Client {
     }
 
     pub(crate) async fn make_get_request(
+        &self,
+        url: impl AsRef<str>,
+        site: Site,
+    ) -> Result<Bytes, ClientError> {
+        let url = url.as_ref();
+        trace!("GET request to url {url}");
+
+        let req = Request::builder()
+            .uri(url)
+            .method(Method::GET)
+            .header(USER_AGENT, MY_USER_AGENT);
+
+        let req = match site {
+            #[cfg(not(feature = "twitch"))]
+            Site::Twitch => {
+                return Err(ClientError::Report(eyre::Report::msg(
+                    "twitch request without twitch feature",
+                )));
+            }
+            #[cfg(feature = "twitch")]
+            Site::Twitch => req
+                .header("Client-ID", self.twitch.client_id.clone())
+                .header(
+                    http::header::AUTHORIZATION,
+                    format!("Bearer {}", self.twitch.oauth_token),
+                ),
+            _ => req,
+        };
+
+        let req = req
+            .body(Body::default())
+            .wrap_err("failed to build GET request")?;
+
+        let (response, start) = self
+            .send_request(req, site)
+            .await
+            .wrap_err("failed to receive GET response")?;
+
+        let status = response.status();
+        if status == StatusCode::MOVED_PERMANENTLY {
+            let location = response
+                .headers()
+                .get(http::header::LOCATION)
+                .ok_or_else(|| eyre::eyre!("missing location header"))?
+                .to_str()
+                .wrap_err("invalid location header")?;
+            return self.make_get_request2(location, site).await;
+        }
+        let bytes_res = Self::error_for_status(response, url).await;
+
+        let latency = start.elapsed();
+        ClientMetrics::observe(site, status, latency);
+
+        bytes_res
+    }
+
+    pub(crate) async fn make_get_request2(
         &self,
         url: impl AsRef<str>,
         site: Site,

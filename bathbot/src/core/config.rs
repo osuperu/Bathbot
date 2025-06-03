@@ -14,6 +14,7 @@ static CONFIG: OnceCell<BotConfig> = OnceCell::new();
 
 #[derive(Debug)]
 pub struct BotConfig {
+    pub server_url: Box<str>,
     pub database_url: Box<str>,
     pub tokens: Tokens,
     pub paths: Paths,
@@ -92,6 +93,7 @@ impl BotConfig {
         let emotes = Self::parse_emotes::<Emote, _, 17>(emote_strs)?;
 
         let config = BotConfig {
+            server_url: env_var("SERVER_URL")?,
             database_url: env_var("DATABASE_URL")?,
             tokens: Tokens {
                 discord: env_var("DISCORD_TOKEN")?,

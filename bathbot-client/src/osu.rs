@@ -1,4 +1,3 @@
-use bathbot_util::constants::OSU_BASE;
 use bytes::Bytes;
 use eyre::{Report, Result, WrapErr};
 use http::response::Parts;
@@ -57,8 +56,8 @@ impl Client {
             .map_err(Report::new)
     }
 
-    pub async fn get_map_file(&self, map_id: u32) -> Result<Bytes, ClientError> {
-        let url = format!("{OSU_BASE}osu/{map_id}");
+    pub async fn get_map_file(&self, server_url: &str, map_id: u32) -> Result<Bytes, ClientError> {
+        let url = format!("{server_url}osu/{map_id}");
 
         self.make_get_request(&url, Site::OsuMapFile).await
     }
